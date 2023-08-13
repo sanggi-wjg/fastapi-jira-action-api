@@ -22,7 +22,7 @@ def parse_next_version_name(prefix: str, latest_version_name: str) -> Union[str 
         current_version = match.group(1)
         major, minor, patch = map(int, current_version.split('.'))
         next_version = f"{major}.{minor}.{patch + 1}"
-        return f"{prefix}-{next_version}"
+        return f"{prefix}-{next_version}".replace("--", "-")
     else:
         return None
 

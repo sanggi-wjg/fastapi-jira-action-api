@@ -1,6 +1,3 @@
-import logging
-import re
-from datetime import datetime
 from enum import Enum
 from typing import Union
 
@@ -8,10 +5,10 @@ from jira import JIRA, Issue
 from jira.resources import Version
 
 from app.core.exception import BadRequest
-from app.core.utils import parse_next_version_name, get_current_date_text
+from app.core.utils import parse_next_version_name, get_current_date_text, get_logger
 from app.model.jira import JiraAuth
 
-logger = logging.getLogger(__file__)
+log = get_logger()
 
 
 class FieldType(Enum):
@@ -57,11 +54,17 @@ class CustomStringField(Field):
 class JiraClient:
 
     def __init__(self, auth: JiraAuth):
-        self.jira = JIRA(
-            server=auth.jira_url,
-            basic_auth=(auth.jira_username, auth.jira_token)
-        )
+        self.jira_url = auth.jira_url
+        self.jira_username = auth.jira_username
+        self.jira_token = auth.jira_token
         self.jira_project = auth.jira_project
+        self.jira = self.get_jira_client()
+
+    def get_jira_client(self):
+        return JIRA(
+            server=self.jira_url,
+            basic_auth=(self.jira_username, self.jira_token)
+        )
 
     @classmethod
     def get_available_fields(cls) -> dict:
@@ -116,7 +119,9 @@ class JiraClient:
         """
         issue = self.find_issue(issue_id)
         field_klass = self._get_available_field_klass(field_name)
-        return field_klass.get_value(issue.fields)
+        value = field_klass.get_value(issue.fields)
+        log.debug(f"{issue_id}, {field_name}, {value}")
+        return value
 
     def get_versions(self) -> [Version]:
         """
@@ -125,6 +130,16 @@ class JiraClient:
         :rtype:
         """
         return self.jira.project_versions(self.jira_project)
+
+    def is_exists_version_by_name(self, version_name: str) -> bool:
+        """
+
+        :param version_name:
+        :type version_name:
+        :return:
+        :rtype:
+        """
+        return self.jira.get_project_version_by_name(version_name) is not None
 
     def generate_next_version_name(self, version_name_prefix: str) -> Union[str | None]:
         """
@@ -141,7 +156,9 @@ class JiraClient:
         ])
         if len(matched_version_names) == 0:
             return None
-        return parse_next_version_name(version_name_prefix, matched_version_names[-1])
+        next_version_name = parse_next_version_name(version_name_prefix, matched_version_names[-1])
+        log.debug(f"generate_next_version_name, {next_version_name}")
+        return next_version_name
 
     def create_version(self, version_name_prefix: str, version_name: str) -> bool:
         """
@@ -154,12 +171,18 @@ class JiraClient:
         :rtype:
         """
         next_version_name = self.generate_next_version_name(version_name_prefix)
+        next_version_name = next_version_name if next_version_name else version_name
+        if self.is_exists_version_by_name(next_version_name):
+            log.warn(f"{next_version_name} is exits")
+            return False
+
         self.jira.create_version(
-            name=next_version_name if next_version_name else version_name,
+            name=next_version_name,
             project=self.jira_project,
             description="Created by Jira Action",
             startDate=get_current_date_text()
         )
+        log.info(f"{next_version_name} is created")
         return True
 
     def release_version(self, version_name: str) -> bool:
@@ -170,6 +193,11 @@ class JiraClient:
         :return:
         :rtype:
         """
-        version: Version = self.jira.get_project_version_by_name(version_name)
+        version = self.jira.get_project_version_by_name(version_name)
+        if version is None:
+            log.warn(f"{version_name} is not exists")
+            raise BadRequest(f"version is not exists, {version_name}")
+
         version.update(released=True, releaseDate=get_current_date_text())
+        log.info(f"{version_name} is released")
         return True
