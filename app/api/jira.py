@@ -75,7 +75,6 @@ async def get_jira_issue_field_value_by_name(
 )
 async def get_jira_versions(
         token: Annotated[str, Depends(api_key_header)],
-        version_request: CreateVersionReqeust,
         jira_auth: JiraAuth
 ):
     versions = JiraClient(jira_auth).get_versions()
@@ -98,7 +97,7 @@ async def create_jira_version(
         version_request: CreateVersionReqeust,
         jira_auth: JiraAuth
 ):
-    JiraClient(jira_auth).create_version(version_request.version_name_prefix, version_request.version_name)
+    JiraClient(jira_auth).create_version(version_request.version_type, version_request.version_name_prefix, version_request.version_name)
     return PlainTextResponse(
         status_code=status.HTTP_201_CREATED,
         content="Success"

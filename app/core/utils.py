@@ -5,11 +5,14 @@ from functools import lru_cache
 from typing import Union
 
 from app.core.setting import get_cached_settings
+from app.model.jira import CreateVersionType
 
 
-def parse_next_version_name(prefix: str, latest_version_name: str) -> Union[str | None]:
+def parse_next_version_name(version_type: CreateVersionType, prefix: str, latest_version_name: str) -> Union[str | None]:
     """
 
+    :param version_type:
+    :type version_type:
     :param prefix:
     :type prefix:
     :param latest_version_name:
@@ -21,7 +24,15 @@ def parse_next_version_name(prefix: str, latest_version_name: str) -> Union[str 
     if match:
         current_version = match.group(1)
         major, minor, patch = map(int, current_version.split('.'))
-        next_version = f"{major}.{minor}.{patch + 1}"
+        next_version = ""
+
+        if version_type == CreateVersionType.major:
+            next_version = f"{major + 1}.0.0"
+        if version_type == CreateVersionType.minor:
+            next_version = f"{major}.{minor + 1}.0"
+        if version_type == CreateVersionType.patch:
+            next_version = f"{major}.{minor}.{patch + 1}"
+
         return f"{prefix}-{next_version}".replace("--", "-")
     else:
         return None

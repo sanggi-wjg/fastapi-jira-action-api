@@ -6,7 +6,7 @@ from jira.resources import Version
 
 from app.core.exception import BadRequest
 from app.core.utils import parse_next_version_name, get_current_date_text, get_logger
-from app.model.jira import JiraAuth
+from app.model.jira import JiraAuth, CreateVersionType
 
 log = get_logger()
 
@@ -141,9 +141,11 @@ class JiraClient:
         """
         return self.jira.get_project_version_by_name(version_name) is not None
 
-    def generate_next_version_name(self, version_name_prefix: str) -> Union[str | None]:
+    def generate_next_version_name(self, version_type: CreateVersionType, version_name_prefix: str) -> Union[str | None]:
         """
 
+        :param version_type:
+        :type version_type:
         :param version_name_prefix:
         :type version_name_prefix:
         :return:
@@ -151,18 +153,21 @@ class JiraClient:
         """
         versions = self.get_versions()
         matched_version_names = sorted([
-            version.name for version in versions
-            if version.name.startswith(version_name_prefix)
-        ])
+            (version.name, version.releaseDate) for version in versions
+            if version.released and version.name.startswith(version_name_prefix)
+        ], key=lambda x: x[1])
         if len(matched_version_names) == 0:
             return None
-        next_version_name = parse_next_version_name(version_name_prefix, matched_version_names[-1])
+
+        next_version_name = parse_next_version_name(version_type, version_name_prefix, matched_version_names[-1][0])
         log.debug(f"generate_next_version_name, {next_version_name}")
         return next_version_name
 
-    def create_version(self, version_name_prefix: str, version_name: str) -> bool:
+    def create_version(self, version_type: CreateVersionType, version_name_prefix: str, version_name: str) -> bool:
         """
 
+        :param version_type:
+        :type version_type:
         :param version_name_prefix:
         :type version_name_prefix:
         :param version_name:
@@ -170,7 +175,7 @@ class JiraClient:
         :return:
         :rtype:
         """
-        next_version_name = self.generate_next_version_name(version_name_prefix)
+        next_version_name = self.generate_next_version_name(version_type, version_name_prefix)
         next_version_name = next_version_name if next_version_name else version_name
         if self.is_exists_version_by_name(next_version_name):
             log.warn(f"{next_version_name} is exits")

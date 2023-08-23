@@ -1,8 +1,6 @@
+from enum import Enum
+
 from pydantic import BaseModel, Field
-
-
-class CreateIssueCommentRequest(BaseModel):
-    comment: str = Field(title="코멘트", examples=["Updated by Jira Action"])
 
 
 class JiraAuth(BaseModel):
@@ -12,9 +10,20 @@ class JiraAuth(BaseModel):
     jira_token: str = Field(title="Jira Token", examples=["secret_api_token"])
 
 
+class CreateIssueCommentRequest(BaseModel):
+    comment: str = Field(title="코멘트", examples=["Updated by Jira Action"])
+
+
+class CreateVersionType(Enum):
+    major = "major"
+    minor = "minor"
+    patch = "patch"
+
+
 class CreateVersionReqeust(BaseModel):
+    version_type: CreateVersionType = Field(title="버전 생성 유형")
     version_name_prefix: str = Field(title="버전 접두사", examples=["BE-ADMIN-TEST"])
-    version_name: str = Field(title="버전명", description="버전 접두사와 일치하는게 없을 경우 사용 됩니다.", examples=["BE-ADMIN-TEST-4.0.x"])
+    version_name: str | None = Field(title="버전명 (이걸로 생성하고 싶을 때)", description="버전 접두사와 일치하는게 없을 경우 사용 됩니다.", examples=["BE-ADMIN-TEST-4.0.x"], default=None)
 
 
 class UpdateVersionReqeust(BaseModel):
