@@ -5,10 +5,12 @@ from functools import lru_cache
 from typing import Union
 
 from app.core.setting import get_cached_settings
-from app.model.jira import CreateVersionType
+from app.model.jira import CreateVersionTypeEnum
 
 
-def parse_next_version_name(version_type: CreateVersionType, prefix: str, latest_version_name: str) -> Union[str | None]:
+def parse_next_version_name(
+    version_type: CreateVersionTypeEnum, prefix: str, latest_version_name: str
+) -> Union[str | None]:
     """
 
     :param version_type:
@@ -20,17 +22,17 @@ def parse_next_version_name(version_type: CreateVersionType, prefix: str, latest
     :return:
     :rtype:
     """
-    match = re.search(r'(\d+\.\d+\.\d+)$', latest_version_name)
+    match = re.search(r"(\d+\.\d+\.\d+)$", latest_version_name)
     if match:
         current_version = match.group(1)
-        major, minor, patch = map(int, current_version.split('.'))
+        major, minor, patch = map(int, current_version.split("."))
         next_version = ""
 
-        if version_type == CreateVersionType.major:
+        if version_type == CreateVersionTypeEnum.major:
             next_version = f"{major + 1}.0.0"
-        if version_type == CreateVersionType.minor:
+        if version_type == CreateVersionTypeEnum.minor:
             next_version = f"{major}.{minor + 1}.0"
-        if version_type == CreateVersionType.patch:
+        if version_type == CreateVersionTypeEnum.patch:
             next_version = f"{major}.{minor}.{patch + 1}"
 
         return f"{prefix}-{next_version}".replace("--", "-")
@@ -46,7 +48,10 @@ def get_current_date_text() -> str:
 def get_logger():
     settings = get_cached_settings()
 
-    formatter = logging.Formatter("[%(levelname)s]\t %(asctime)s\t %(pathname)s:%(lineno)d\t\t %(message)s", datefmt="%Y-%m-%d %I:%M:%S")
+    formatter = logging.Formatter(
+        "[%(levelname)s]\t %(asctime)s\t %(pathname)s:%(lineno)d\t\t %(message)s",
+        datefmt="%Y-%m-%d %I:%M:%S",
+    )
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(formatter)
 
