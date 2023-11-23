@@ -81,11 +81,12 @@ class JiraClient:
 
     def get_versions(self, version_search: VersionSearchDto) -> [Version]:
         """
+        릴리즈 버전 검색
 
-        :param version_search:
-        :type version_search:
-        :return:
-        :rtype:
+        :param version_search: 릴리즈 버전 검색 조건
+        :type version_search: VersionSearchDto
+        :return: 릴리즈 버전들
+        :rtype: List[Version]
         """
         versions: list[Version] = self.jira.project_versions(self.jira_project)
         versions = [
@@ -99,11 +100,12 @@ class JiraClient:
 
     def is_exists_version_by_name(self, version_name: str) -> bool:
         """
+        이름으로 릴리즈 버전 검색
 
-        :param version_name:
-        :type version_name:
-        :return:
-        :rtype:
+        :param version_name: 릴리즈 버전명
+        :type version_name: str
+        :return: 존재 여부
+        :rtype: bool
         """
         return self.jira.get_project_version_by_name(version_name) is not None
 
@@ -111,13 +113,14 @@ class JiraClient:
         self, version_type: CreateVersionTypeEnum, version_name_prefix: str
     ) -> Union[str | None]:
         """
+        다음 릴리즈 버전 이름을 주어진 조건을 통해서 구한다.
 
-        :param version_type:
-        :type version_type:
-        :param version_name_prefix:
-        :type version_name_prefix:
-        :return:
-        :rtype:
+        :param version_type: major? minor? patch? 값
+        :type version_type: CreateVersionTypeEnum
+        :param version_name_prefix: 버전 이름 접두사
+        :type version_name_prefix: str
+        :return: 다음 릴리즈 버전 이름
+        :rtype: str
         """
         versions = self.get_versions(
             VersionSearchDto(is_released=False, is_archived=False, version_name=version_name_prefix)
