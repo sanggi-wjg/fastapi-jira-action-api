@@ -1,59 +1,18 @@
-from enum import Enum
 from typing import Union
 
 from jira import JIRA, Issue
 from jira.resources import Version
 
-from app.core.exception import BadRequest
+from app.core.exceptions import BadRequest
+from app.core.jira_sdk.jira_fields import PriorityField, CustomStringField, JiraField
 from app.core.utils import parse_next_version_name, get_current_date_text, get_logger
-from app.model.jira import JiraAuth, CreateVersionType
+from app.api.model.jira import JiraAuthDto, CreateVersionTypeEnum, VersionSearchDto
 
 log = get_logger()
 
 
-class FieldType(Enum):
-    PRIORITY = "PRIORITY"
-    CUSTOM_FIELD = "CUSTOM_FIELD"
-    CUSTOM_STRING_FIELD = "CUSTOM_STRING_FIELD"
-
-
-class Field:
-    field_type: FieldType
-    name: str
-
-    def get_value(self, fields: Issue._IssueFields) -> str:
-        raise NotImplementedError
-
-
-class PriorityField(Field):
-    field_type = FieldType.PRIORITY
-    name = "priority"
-
-    def get_value(self, fields: Issue._IssueFields) -> str:
-        priority = getattr(fields, self.name)
-        return priority.name
-
-
-class CustomField(Field):
-    field_type = FieldType.CUSTOM_FIELD
-
-    def get_value(self, fields: Issue._IssueFields) -> str:
-        pass
-
-
-class CustomStringField(Field):
-    field_type = FieldType.CUSTOM_STRING_FIELD
-
-    def __init__(self, name: str):
-        self.name = name
-
-    def get_value(self, fields: Issue._IssueFields) -> str:
-        return getattr(fields, self.name)
-
-
 class JiraClient:
-
-    def __init__(self, auth: JiraAuth):
+    def __init__(self, auth: JiraAuthDto):
         self.jira_url = auth.jira_url
         self.jira_username = auth.jira_username
         self.jira_token = auth.jira_token
@@ -61,10 +20,7 @@ class JiraClient:
         self.jira = self.get_jira_client()
 
     def get_jira_client(self):
-        return JIRA(
-            server=self.jira_url,
-            basic_auth=(self.jira_username, self.jira_token)
-        )
+        return JIRA(server=self.jira_url, basic_auth=(self.jira_username, self.jira_token))
 
     @classmethod
     def get_available_fields(cls) -> dict:
@@ -74,7 +30,7 @@ class JiraClient:
             "target-end": CustomStringField("customfield_10023"),
         }
 
-    def _get_available_field_klass(self, field_name) -> Field:
+    def _get_available_field_klass(self, field_name) -> JiraField:
         field_klass = self.get_available_fields().get(field_name)
         if field_klass is None:
             raise BadRequest(f"field klass is not exist, {field_name}")
@@ -123,13 +79,23 @@ class JiraClient:
         log.debug(f"{issue_id}, {field_name}, {value}")
         return value
 
-    def get_versions(self) -> [Version]:
+    def get_versions(self, version_search: VersionSearchDto) -> [Version]:
         """
 
+        :param version_search:
+        :type version_search:
         :return:
         :rtype:
         """
-        return self.jira.project_versions(self.jira_project)
+        versions: list[Version] = self.jira.project_versions(self.jira_project)
+        versions = [
+            version
+            for version in versions
+            if (version.released == version_search.is_released)
+            and (version.archived == version_search.is_archived)
+            and (version_search.version_name and (version_search.version_name in version.name))
+        ]
+        return versions
 
     def is_exists_version_by_name(self, version_name: str) -> bool:
         """
@@ -141,7 +107,9 @@ class JiraClient:
         """
         return self.jira.get_project_version_by_name(version_name) is not None
 
-    def generate_next_version_name(self, version_type: CreateVersionType, version_name_prefix: str) -> Union[str | None]:
+    def generate_next_version_name(
+        self, version_type: CreateVersionTypeEnum, version_name_prefix: str
+    ) -> Union[str | None]:
         """
 
         :param version_type:
@@ -151,11 +119,17 @@ class JiraClient:
         :return:
         :rtype:
         """
-        versions = self.get_versions()
-        matched_version_names = sorted([
-            (version.name, version.releaseDate) for version in versions
-            if version.released and version.name.startswith(version_name_prefix)
-        ], key=lambda x: x[1])
+        versions = self.get_versions(
+            VersionSearchDto(is_released=False, is_archived=False, version_name=version_name_prefix)
+        )
+        matched_version_names = sorted(
+            [
+                (version.name, version.releaseDate)
+                for version in versions
+                if version.released and version.name.startswith(version_name_prefix)
+            ],
+            key=lambda x: x[1],
+        )
         if len(matched_version_names) == 0:
             return None
 
@@ -163,7 +137,12 @@ class JiraClient:
         log.debug(f"generate_next_version_name, {next_version_name}")
         return next_version_name
 
-    def create_version(self, version_type: CreateVersionType, version_name_prefix: str, version_name: str) -> bool:
+    def create_version(
+        self,
+        version_type: CreateVersionTypeEnum,
+        version_name_prefix: str,
+        version_name: str,
+    ) -> bool:
         """
 
         :param version_type:
@@ -185,7 +164,7 @@ class JiraClient:
             name=next_version_name,
             project=self.jira_project,
             description="Created by Jira Action",
-            startDate=get_current_date_text()
+            startDate=get_current_date_text(),
         )
         log.info(f"{next_version_name} is created")
         return True
