@@ -4,18 +4,20 @@ from pydantic import BaseModel, Field
 
 
 class JiraAuthDto(BaseModel):
-    jira_url: str = Field(
-        title="Jira URL", examples=["https://dev.atlassian.net/"], max_length=100
-    )
+    jira_url: str = Field(title="Jira URL", examples=["https://dev.atlassian.net/"], max_length=100)
     jira_project: str = Field(title="Jira Project", examples=["TJP"], max_length=3)
-    jira_username: str = Field(
-        title="Jira Username", examples=["user@dev.com"], max_length=100
-    )
+    jira_username: str = Field(title="Jira Username", examples=["user@dev.com"], max_length=100)
     jira_token: str = Field(title="Jira Token", examples=["secret_api_token"])
 
 
 class CreateIssueCommentRequestDto(BaseModel):
     comment: str = Field(title="코멘트", examples=["Updated by Jira Action"])
+
+
+class VersionSearchDto(BaseModel):
+    is_released: bool = Field(title="버전 릴리즈 여부", examples=[False], default=False)
+    is_archived: bool = Field(title="버전 아카이브 여부", examples=[False], default=False)
+    version_name: str = Field(title="버전명 (contain)", examples=["BE-MALL-"], default="")
 
 
 class CreateVersionTypeEnum(Enum):

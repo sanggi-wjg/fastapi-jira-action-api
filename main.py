@@ -12,7 +12,7 @@ from app.core.exceptions import (
     forbidden_handler,
     jira_error_handler,
 )
-from app.core.setting import get_cached_settings
+from app.core.config import get_cached_settings
 
 settings = get_cached_settings()
 

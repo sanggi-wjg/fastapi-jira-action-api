@@ -4,8 +4,8 @@ from datetime import datetime
 from functools import lru_cache
 from typing import Union
 
-from app.core.setting import get_cached_settings
-from app.model.jira import CreateVersionTypeEnum
+from app.core.config import get_cached_settings
+from app.api.model.jira import CreateVersionTypeEnum
 
 
 def parse_next_version_name(

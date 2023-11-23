@@ -27,7 +27,7 @@ async def bad_request_handler(request: Request, e: BadRequest):
 async def forbidden_handler(request: Request, e: Forbidden):
     return JSONResponse(
         status_code=status.HTTP_403_FORBIDDEN,
-        content={"code": status.HTTP_403_FORBIDDEN, "detail": "Not authenticated"},
+        content={"code": status.HTTP_403_FORBIDDEN, "detail": "X-API-Key Not authenticated"},
     )
 
 

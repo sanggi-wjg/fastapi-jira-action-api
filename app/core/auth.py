@@ -4,7 +4,7 @@ from fastapi.security import APIKeyHeader
 from starlette.requests import Request
 
 from app.core.exceptions import Forbidden
-from app.core.setting import get_cached_settings
+from app.core.config import get_cached_settings
 
 
 class CustomAPIKeyHeader(APIKeyHeader):

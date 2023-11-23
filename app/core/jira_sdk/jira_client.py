@@ -4,9 +4,9 @@ from jira import JIRA, Issue
 from jira.resources import Version
 
 from app.core.exceptions import BadRequest
-from app.core.model.jira_fields import PriorityField, CustomStringField, JiraField
+from app.core.jira_sdk.jira_fields import PriorityField, CustomStringField, JiraField
 from app.core.utils import parse_next_version_name, get_current_date_text, get_logger
-from app.model.jira import JiraAuthDto, CreateVersionTypeEnum
+from app.api.model.jira import JiraAuthDto, CreateVersionTypeEnum, VersionSearchDto
 
 log = get_logger()
 
@@ -79,13 +79,23 @@ class JiraClient:
         log.debug(f"{issue_id}, {field_name}, {value}")
         return value
 
-    def get_versions(self) -> [Version]:
+    def get_versions(self, version_search: VersionSearchDto) -> [Version]:
         """
 
+        :param version_search:
+        :type version_search:
         :return:
         :rtype:
         """
-        return self.jira.project_versions(self.jira_project)
+        versions: list[Version] = self.jira.project_versions(self.jira_project)
+        versions = [
+            version
+            for version in versions
+            if (version.released == version_search.is_released)
+            and (version.archived == version_search.is_archived)
+            and (version_search.version_name and (version_search.version_name in version.name))
+        ]
+        return versions
 
     def is_exists_version_by_name(self, version_name: str) -> bool:
         """
@@ -109,7 +119,9 @@ class JiraClient:
         :return:
         :rtype:
         """
-        versions = self.get_versions()
+        versions = self.get_versions(
+            VersionSearchDto(is_released=False, is_archived=False, version_name=version_name_prefix)
+        )
         matched_version_names = sorted(
             [
                 (version.name, version.releaseDate)
